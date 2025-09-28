@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contele de Transilvania — Wireframe + Ticker</title>
+  <style>
+    :root { --violet:#8A2BE2; --edge:#BFA6FF; --node:#FF66F0; }
+    html,body{height:100%}
+    body{margin:0;padding:0;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
+
+    #toolbar{position:fixed;inset:0 0 auto 0;display:flex;align-items:center;justify-content:center;gap:12px;padding:18px;
+      background:linear-gradient(180deg,rgba(0,0,0,.85),rgba(0,0,0,.3) 60%,rgba(0,0,0,0));z-index:1000;pointer-events:none}
+    .btn{pointer-events:auto;appearance:none;border:0;outline:0;padding:10px 18px;border-radius:10px;background:var(--violet);color:#fff;
+      font-weight:700;letter-spacing:.4px;cursor:pointer;transition:transform .12s ease,filter .12s ease,background .2s ease;
+      box-shadow:0 10px 30px rgba(138,43,226,.35),inset 0 0 0 1px rgba(255,255,255,.06)}
+    .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+    .btn:active{transform:translateY(1px) scale(.99)}
+
+    #container{position:absolute;inset:0}
+
+    #title{position:absolute;top:18px;left:50%;transform:translateX(-50%);margin:0;z-index:10;text-align:center;pointer-events:none;line-height:1}
+    #title .top{display:block;font-weight:900;color:var(--violet);text-shadow:0 0 18px rgba(138,43,226,.5);letter-spacing:2px;
+      font-size:clamp(22px,4.2vw,42px)}
+    #title .big{display:block;font-weight:900;color:var(--violet);text-shadow:0 0 24px rgba(138,43,226,.55);letter-spacing:4px;
+      font-size:clamp(48px,9vw,140px)}
+
+    #instruction{position:absolute;bottom: 48px;left:50%;transform:translateX(-50%);margin:0;font-size:clamp(14px,2.2vw,22px);
+      color:#ccc;z-index:10;text-align:center}
+
+    #page-container{position:absolute;inset:0;display:none;z-index:20;background:#000;opacity:0;transition:opacity .5s ease-in-out;animation:portalOpen .8s ease-in-out}
+    #page-container.active{display:block;opacity:1}
+    #sub-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;font-size:clamp(32px,7vw,96px);
+      color:var(--violet);text-shadow:0 0 18px rgba(138,43,226,.5);text-align:center}
+    #back-button{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);padding:10px 20px;background:var(--violet);color:#fff;
+      border:none;font-size:1.2em;cursor:pointer;border-radius:10px;box-shadow:0 10px 30px rgba(138,43,226,.35)}
+    #back-button:hover{filter:brightness(1.08)}
+
+    .label{position:absolute;color:#fff;font-size:0.58em;text-align:center;pointer-events:auto;cursor:pointer;
+      text-shadow:1px 1px 2px rgba(138,43,226,.5);transition:transform .2s ease}
+    .label:hover{transform:scale(1.06)}
+    #labels-layer{position:absolute;inset:0;pointer-events:none;z-index:9}
+    #labels-layer .label{pointer-events:auto}
+
+    @keyframes portalOpen{0%{opacity:0;transform:scale(.8) rotateY(0deg)}50%{opacity:.5;transform:scale(1.06) rotateY(90deg)}100%{opacity:1;transform:scale(1) rotateY(180deg)}}
+
+    #start{position:absolute;inset:0;display:grid;place-items:center;z-index:30;background:radial-gradient(circle at 50% 40%,rgba(138,43,226,.08),rgba(0,0,0,.85) 60%)}
+    #start h2{color:var(--violet);margin-bottom:16px;text-shadow:0 0 18px rgba(138,43,226,.5)}
+    #start-inner{text-align:center}
+
+    /* Ticker jos */
+    #ticker {
+      position:fixed;
+      bottom:0;
+      width:100%;
+      background:#111;
+      color:#8A2BE2;
+      padding:4px 0;
+      white-space:nowrap;
+      overflow:hidden;
+      font-size:0.8em;
+      text-shadow:0 0 6px rgba(138,43,226,0.7);
+      z-index:2000;
+    }
+    #ticker span {
+      display:inline-block;
+      padding-left: 35%;
+      animation: scroll 60s linear infinite;
+    }
+    @keyframes scroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/renderers/CSS3DRenderer.js"></script>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="previewBtn" class="btn">▶︎ Preview</button>
+    <button id="resetBtn" class="btn" style="display:none;">⟲ Reset</button>
+  </div>
+
+  <div id="container" aria-hidden="true">
+    <h1 id="title"><span class="top">CONTELE DE</span><span class="big">TRANSILVANIA</span></h1>
+    <div id="canvas-container"></div>
+    <div id="labels-layer" style="display:none"></div>
+    <p id="instruction">Apăsați pe oricare dintre titluri pentru a intra.</p>
+  </div>
+
+  <div id="page-container">
+    <h1 id="sub-title"></h1>
+    <button id="back-button">ÎNAPOI</button>
+  </div>
+
+  <div id="start">
+    <div id="start-inner">
+      <h2>Hub 3D — Demo Snapshot</h2>
+      <p>Apasă <strong>Preview</strong> ca să pornești scena.</p>
+    </div>
+  </div>
+
+  <!-- Ticker jos -->
+  <div id="ticker">
+    <span>Pagina e în construcție. Țineți cont că-s ardelean: am două viteze — încet și foarte încet. Deci… va mai dura.</span>
+  </div>
+
+  <script>
+    let scene, camera, renderer, cssRenderer, root, nodes=[], labelElements=[], animHandle;
+    let usingFallback=false;
+
+    const labels=[
+      'Refugium 2125','Politically Correct','Spicy Love','LGBT','Tușa Groasă',
+      'Citate Personale','Cântece Personale','Poezii Proprii','Invenții','Imaginație Bolnăvicioasă',
+      'Religie','Știri cu Colți','Check your Luck and Love Today','Umor Negru Personal',
+      'România','New Zealand','Zexx','Sport','Sweet Capitalism','Obsedatul Zexxual'
+    ];
+
+    let baselineYWorld = 0;
+    let bobAmpWorld = 0.02;
+
+    function uniqueVerticesFromBufferGeometry(geom){
+      const pos = geom.getAttribute('position');
+      const seen = new Set(); const out=[];
+      for(let i=0;i<pos.count;i++){
+        const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
+        const k=`${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`;
+        if(!seen.has(k)){ seen.add(k); out.push(new THREE.Vector3(x,y,z)); }
+      }
+      return out;
+    }
+
+    function startApp(){
+      document.getElementById('start').style.display='none';
+      document.getElementById('previewBtn').style.display='none';
+      document.getElementById('resetBtn').style.display='inline-block';
+      document.getElementById('container').setAttribute('aria-hidden','false');
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+      const amb = new THREE.AmbientLight(0xffffff, 0.55);
+      const dir1 = new THREE.DirectionalLight(0xFFFFFF, 0.45); dir1.position.set(5,6,7);
+      const dir2 = new THREE.DirectionalLight(0x8888FF, 0.35); dir2.position.set(-6,3,2);
+      scene.add(amb, dir1, dir2);
+
+      if(typeof THREE.CSS3DRenderer==='function'){
+        cssRenderer = new THREE.CSS3DRenderer();
+        cssRenderer.setSize(window.innerWidth, window.innerHeight);
+        cssRenderer.domElement.style.position='absolute';
+        cssRenderer.domElement.style.top=0;
+        document.getElementById('canvas-container').appendChild(cssRenderer.domElement);
+      } else { usingFallback=true; document.getElementById('labels-layer').style.display='block'; }
+
+      root = new THREE.Group();
+      scene.add(root);
+
+      const dode = new THREE.DodecahedronGeometry(5,0);
+      const verts = uniqueVerticesFromBufferGeometry(dode);
+
+      const edgesGeom = new THREE.EdgesGeometry(dode);
+      const edgesMat = new THREE.LineBasicMaterial({color: 0xBFA6FF, transparent:true, opacity:0.6});
+      const edgesMesh = new THREE.LineSegments(edgesGeom, edgesMat);
+      root.add(edgesMesh);
+
+      const nodeMat = new THREE.MeshBasicMaterial({color: 0xFF66F0});
+      verts.forEach((v, i)=>{
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.18,16,16), nodeMat);
+        sphere.position.copy(v);
+        root.add(sphere); nodes.push(sphere);
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className='label';
+        labelDiv.textContent = labels[i % labels.length];
+        labelDiv.addEventListener('click',(e)=>{ e.stopPropagation(); showPage(labels[i % labels.length]);});
+        labelElements.push(labelDiv);
+
+        if(usingFallback){
+          document.getElementById('labels-layer').appendChild(labelDiv);
+        } else {
+          const labelObj = new THREE.CSS3DObject(labelDiv);
+          labelObj.position.copy(v).add(new THREE.Vector3(0,0.28,0));
+          root.add(labelObj);
+        }
+      });
+
+      camera.position.z = 15;
+      camera.position.y = 0;
+
+      computeLayout();
+
+      function animate(){
+        animHandle = requestAnimationFrame(animate);
+        const t = Date.now() * 0.00008;
+        root.rotation.y = t;
+        root.rotation.x = Math.sin(t*0.25)*0.04;
+        root.position.y = baselineYWorld + Math.sin(t*0.8)*bobAmpWorld;
+        renderer.render(scene, camera);
+
+        if(usingFallback){
+          const w=window.innerWidth, h=window.innerHeight; const tmp=new THREE.Vector3();
+          nodes.forEach((node, idx)=>{
+            node.getWorldPosition(tmp); tmp.project(camera);
+            const x=(tmp.x*0.5+0.5)*w; const y=(-tmp.y*0.5+0.5)*h;
+            const el=labelElements[idx];
+            el.style.transform=`translate(-50%,-50%) translate(${x}px, ${y-20}px)`;
+            el.style.display=(tmp.z>1)?'none':'block';
+          });
+        } else { cssRenderer.render(scene, camera); }
+      }
+      animate();
+
+      window.addEventListener('resize', onResize);
+    }
+
+    function computeLayout(){
+      const titleRect = document.getElementById('title').getBoundingClientRect();
+      const instrRect = document.getElementById('instruction').getBoundingClientRect();
+      const padding = 8;
+      const topY = Math.ceil(titleRect.bottom) + padding;
+      const bottomY = Math.floor(instrRect.top) - padding;
+      const h = window.innerHeight;
+
+      const visibleHWorld = 2 * camera.position.z * Math.tan(THREE.Math.degToRad(camera.fov/2));
+      const worldPerPx = visibleHWorld / h;
+      const allowedHWorld = Math.max(0.1, (bottomY - topY) * worldPerPx);
+
+      const centerPx = (topY + bottomY) / 2;
+      baselineYWorld = (0.5 - (centerPx / h)) * visibleHWorld;
+
+      const labelPadPx = 28;
+      const extraWorld = (labelPadPx * worldPerPx) + 0.25;
+      const halfObjectWorld = 5 + extraWorld;
+      const safety = allowedHWorld * 0.02;
+      const targetHalf = Math.max(0.1, (allowedHWorld / 2) - safety);
+      const scale = Math.max(0.1, Math.min(3, targetHalf / halfObjectWorld));
+      root.scale.set(scale, scale, scale);
+
+      bobAmpWorld = allowedHWorld * 0.01;
+    }
+
+    function onResize(){
+      if(!camera) return;
+      camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if(cssRenderer) cssRenderer.setSize(window.innerWidth, window.innerHeight);
+      computeLayout();
+    }
+
+    function showPage(title){
+      document.getElementById('sub-title').textContent=title;
+      document.getElementById('page-container').classList.add('active');
+      document.getElementById('instruction').style.display='none';
+      document.getElementById('title').style.display='none';
+    }
+
+    document.getElementById('back-button').addEventListener('click', ()=>{
+      document.getElementById('page-container').classList.remove('active');
+      document.getElementById('instruction').style.display='block';
+      document.getElementById('title').style.display='block';
+    });
+
+    document.getElementById('previewBtn').addEventListener('click', startApp);
+    document.getElementById('resetBtn').addEventListener('click', ()=>{ location.reload(); });
+  </script>
+</body>
+</html>
